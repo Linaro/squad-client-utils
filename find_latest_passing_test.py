@@ -23,8 +23,13 @@ def main(args):
     project = group.project(args.get('project', None))
     bad_suite = project.suite(args.get('suite', None))
     bad_test = args.get('test', None)
-    bad_build = project.build(args.get('kernel_build', None))
     bad_env = project.environment(args.get('arch', None))
+
+    kernel_build = args.get('kernel_build', None)
+    if kernel_build:
+        bad_build = project.build(kernel_build)
+    else:
+        bad_build = first(project.builds(count=1, ordering='-id'))
 
     print('Looking at the next good build in %s/%s for build %s' % (group.slug, project.slug, bad_build.version), flush=True)
 
@@ -47,8 +52,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--kernel_build", required=True,
-                        help="tag or sha, e.g., next-20201204")
+    parser.add_argument("--kernel_build",
+                        help="tag or sha, e.g., next-20201204. Defaults to latest build")
     parser.add_argument("--arch", required=True,
                         help="architecture, e.g., arm64")
     parser.add_argument("--group", required=True,
