@@ -26,18 +26,6 @@ def main(args):
     bad_build = project.build(args.get('kernel_build', None))
     bad_env = project.environment(args.get('arch', None))
 
-    # sh environment on build next-20201210
-    #bad_build = project.build('next-20201210')
-    #bad_env = project.environment('sh')
-
-    # now with arm64 on build next-20201204
-    #bad_build = project.build('next-20201204')
-    #bad_env = project.environment('arm64')
-
-    # now with parisc on build next-20201124 (it should not return anything)
-    #bad_build = project.build('next-20201124')
-    #bad_env = project.environment('parisc')
-
     print('Looking at the next good build in %s/%s for build %s' % (group.slug, project.slug, bad_build.version), flush=True)
 
     tests = squad.tests(
