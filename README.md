@@ -124,6 +124,72 @@ optional arguments:
 ❯ jq '.[] | select(.result>0.0)' results.json | jq --slurp
 ```
 
+### `get-kconfig`: Get all of the kernel configs for a build test
+
+```
+❯ pipenv run ./get-kconfig --help
+usage: get-kconfig [-h] --tuxconfig TUXCONFIG --name NAME
+
+List all kernel configs for a build test
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --tuxconfig TUXCONFIG
+                        tuxconfig yaml
+  --name NAME           test name
+```
+
+- Note: More than one result may be returned. Multiple architectures can use the same toolchain and kernel configs.
+- Note: Make variables are not used to generate the hash.
+
+```
+❯ pipenv run ./get-kconfig --tuxconfig=tuxconfig.yml --name=clang-12-defconfig-b9979cfa
+```
+
+```
+[
+  {
+    "name": "clang-12-defconfig-b9979cfa",
+    "set": "i386-clang-12",
+    "build": {
+      "target_arch": "i386",
+      "toolchain": "clang-12",
+      "kconfig": [
+        "defconfig",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/lkft.config",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/lkft-crypto.config",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/distro-overrides.config",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/systemd.config",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/virtio.config",
+        "CONFIG_IGB=y",
+        "CONFIG_UNWINDER_FRAME_POINTER=y"
+      ]
+    }
+  },
+  {
+    "name": "clang-12-defconfig-b9979cfa",
+    "set": "x86-clang-12",
+    "build": {
+      "target_arch": "x86_64",
+      "toolchain": "clang-12",
+      "make_variables": {
+        "LLVM_IAS": 0
+      },
+      "kconfig": [
+        "defconfig",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/lkft.config",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/lkft-crypto.config",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/distro-overrides.config",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/systemd.config",
+        "https://raw.githubusercontent.com/Linaro/meta-lkft/sumo/recipes-kernel/linux/files/virtio.config",
+        "CONFIG_IGB=y",
+        "CONFIG_UNWINDER_FRAME_POINTER=y"
+      ]
+    }
+  }
+]
+```
+
 ## Contributing
 
 This (alpha) project is managed on [`github`](https://github.com) at https://github.com/Linaro/squad-client-utils
