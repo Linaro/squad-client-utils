@@ -49,11 +49,11 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--environment", help="Filter on environment"
+        "--environments", help="Filter on environments (separated by ',')"
     )
 
     parser.add_argument(
-        "--suite", help="Filter on suite"
+        "--suites", help="Filter on suites (separated by ',')"
     )
 
     parser.add_argument(
@@ -71,8 +71,8 @@ def parse_args():
 
 def download_tests(param):
     logger.debug(f"param: {param}")
-    project, build, environment, suite, output_filename = param
-    download(project, build, environment, suite, output_filename)
+    project, build, environments, suites, output_filename = param
+    download(project, build, environments, suites, "{test.environment.slug}/{test.test_run.metadata.build_name}/{test.name} {test.status}", output_filename,)
 
 
 def run():
@@ -119,13 +119,13 @@ def run():
     else:
         other_build = base_build
 
-    environment = None
-    if args.environment:
-        environment = base_project.environment(args.environment)
+    environments = None
+    if args.environments:
+        environments = [base_project.environment(e) for e in args.environments.split(",")]
 
-    suite = None
-    if args.suite:
-        suite = base_project.suite(args.suite)
+    suites = None
+    if args.suites:
+        suites = [base_project.suite(s) for s in args.suites.split(",")]
 
     logger.debug(f'base: {base_group}/{base_project}/{base_build}')
     logger.debug(f'other: {other_group}/{other_project}/{other_build}')
@@ -138,8 +138,8 @@ def run():
     logger.debug(f"other: {otherfile}")
     with Pool(2) as p:
         p.map(download_tests, [
-            (base_project, base_build, environment, suite, basefile_with_ending),
-            (other_project, other_build, environment, suite, otherfile_with_ending)
+            (base_project, base_build, environments, suites, basefile_with_ending),
+            (other_project, other_build, environments, suites, otherfile_with_ending)
         ])
 
     basefile_open = open(basefile_with_ending, 'r')
