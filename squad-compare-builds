@@ -175,14 +175,11 @@ def run():
             tests[test_name] = (None,test_result)
 
     table_str = ""
-    first = True
+    lines = list()
     for test_name, test_result in tests.items():
         if test_result[0] != test_result[1]:
-            if first:
-                first = False
-            else:
-                table_str += "\n    "
-            table_str += f"{test_result[0]} | {test_result[1]} | {test_name}"
+            lines.append(f"{test_result[0]} | {test_result[1]} | {test_name}")
+    table_str = '\n    '.join(lines)
 
     table_filename = f'table-diff-{basefile}-vs-{otherfile}.txt'
 
