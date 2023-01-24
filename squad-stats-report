@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import subprocess as sp
+from pathlib import Path
 from calendar import monthrange
 from collections import defaultdict
 from datetime import datetime, timedelta, date
@@ -312,8 +313,7 @@ def run():
     devices = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     filename = args.filename or f'{json_dir}/stats-{args.group}-{args.project}.json'
     if os.path.isfile(filename):
-        with open(filename, "r") as infile:
-            a = json.load(infile)
+        a = json.load(Path(filename).open(encoding="utf-8"))
 
     tmp_from_date = date(from_year, from_month, from_day)
     end_date = date(to_year, to_month, to_day)
@@ -372,9 +372,8 @@ def run():
             d['devices'] = devs
             a.append(d)
 
-            with open(filename, "w") as outfile:
-                print(f"Write builds to JSON file {filename}, from_datetime: {tmp_from_date}{from_time}, to_datetime: {tmp_to_date}{to_time}")
-                outfile.write(json.dumps(a, indent=4))
+            print(f"Write builds to JSON file {filename}, from_datetime: {tmp_from_date}{from_time}, to_datetime: {tmp_to_date}{to_time}")
+            Path(filename).write_text(json.dump(a, indent=4), encoding="utf-8")
 
             kernel_pushes.append(len(builds))
             kernel_builts.append(number_of_kernel_builts)
