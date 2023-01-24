@@ -402,22 +402,16 @@ def run():
         total_tests += tests
 
     archs_str = ""
-    first = True
+    arch_lines = list()
     for arch in sorted_dict(architectures):
-        if first:
-            first = False
-        else:
-            archs_str += "\n           "
-        archs_str += f"{arch:<10} ({architectures[arch]} builds)"
+        arch_lines.append(f"{arch:<10} ({architectures[arch]} builds)")
+    archs_str = '\n           '.join(arch_lines)
 
     devices_str = ""
-    first = True
+    device_lines = list()
     for dev in sorted(devices):
-        if first:
-            first = False
-        else:
-            devices_str += "\n           "
-        devices_str += f"{dev:<20} ({len(devices[dev])} suites)"
+        device_lines.append(f"{dev:<20} ({len(devices[dev])} suites)")
+    devices_str += '\n           '.join(device_lines)
 
     report = f"""
         project:       {project.slug}
