@@ -18,7 +18,7 @@ from squad_client.core.api import SquadApi
 from squad_client.core.models import Squad, Build, TestRun
 from squad_client.shortcuts import download_tests as download
 from squad_client.shortcuts import get_build
-from squad_client.utils import getid
+from squad_client.utils import getid, first
 
 squad_host_url = "https://qa-reports.linaro.org/"
 SquadApi.configure(cache=3600, url=os.getenv("SQUAD_HOST",squad_host_url))
@@ -120,10 +120,33 @@ def run():
             line = re.sub("--modules \S+ ", "", line)
             build_cmdline = os.path.join(build_cmdline + ' --results-hook "' + line.strip() + ' --tuxmake ./ --save-outputs --log-file -"').strip()
 
+    suite = base_project.suite("boot")
+    print("Trying to find good tests")
+    good_tests = Squad().tests(
+        build__id__lt=base_build.id,
+        suite__id=suite.id,
+        environment__id=environment.id,
+        metadata__name=build_name,
+        result=True,
+        ordering="-build_id",
+        count=1,
+    )
+
+    print(good_tests)
+
+    if len(good_tests) != 1:
+        print("No good tests found!")
+        return
+
+    good = first(good_tests)
+    good_build = Build(getid(good.build))
+    print(f"Found good test on build {good_build.version}")
+
     bisect_script = f"""#!/bin/bash
 # Set GOOD_SHA
 bad_sha={build.version}
-git bisect start $bad_sha $GOOD_SHA && git bisect run {build_cmdline}
+good_sha={good_build.version}
+git bisect start $bad_sha $good_sha && git bisect run {build_cmdline}
 """
 
     filename = f'bisect-badsha-{build.version}-{device_name}-{build_name}-{suite_name}-{test_name}.sh'
