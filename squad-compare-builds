@@ -15,7 +15,6 @@ import os
 import re
 import sys
 import subprocess as sp
-from multiprocessing import Pool
 from squad_client.core.api import SquadApi
 from squad_client.core.models import Squad
 from squad_client.shortcuts import download_tests as download
@@ -25,7 +24,7 @@ squad_host_url = "https://qa-reports.linaro.org/"
 SquadApi.configure(cache=3600, url=os.getenv("SQUAD_HOST",squad_host_url))
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Compare builds within SQUAD")
@@ -76,9 +75,7 @@ def parse_args():
 
     return parser.parse_args()
 
-def download_tests(param):
-    logger.debug(f"param: {param}")
-    project, build, environments, suites, output_filename = param
+def download_tests(project, build, environments, suites, output_filename):
     download(project, build, environments, suites, "{test.environment.slug}/{test.test_run.metadata.build_name}/{test.name} {test.status}", output_filename,)
 
 
@@ -145,11 +142,8 @@ def run():
     otherfile_with_ending = os.path.join(otherfile + '.txt')
     logger.debug(f"base: {basefile}")
     logger.debug(f"other: {otherfile}")
-    with Pool(2) as p:
-        p.map(download_tests, [
-            (base_project, base_build, environments, suites, basefile_with_ending),
-            (other_project, other_build, environments, suites, otherfile_with_ending)
-        ])
+    download_tests(base_project, base_build, environments, suites, basefile_with_ending)
+    download_tests(other_project, other_build, environments, suites, otherfile_with_ending)
 
     basefile_open = open(basefile_with_ending, 'r')
     otherfile_open = open(otherfile_with_ending, 'r')
