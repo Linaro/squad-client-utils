@@ -218,15 +218,15 @@ def run(raw_args=None):
     github_repo = g.get_repo(f"{username}/{repo_name}")
 
     # Base patch - base patch for PRs
-    base_patch = "origin/master"
+    next_pr_base_patch = "master"
 
     # If there are any formatting updates, make these
     if repo.index.diff("HEAD"):
         summary = "Skipfile formatting updates"
         message = "Clean up skipfile formatting."
-        base = "master"
+        pr_base_patch = next_pr_base_patch
         head = f"formatting-update-{date_str}-{patch_count}"
-        base_patch = head
+        next_pr_base_patch = head
 
         logger.debug(
             "branches:" + "\n".join([str(b.name) for b in github_repo.get_branches()])
@@ -249,7 +249,7 @@ def run(raw_args=None):
                 github_repo,
                 summary,
                 message,
-                base,
+                pr_base_patch,
                 head,
             )
 
@@ -363,8 +363,9 @@ def run(raw_args=None):
             # head name for update
             head = f"skipfile-update-{date_str}-{patch_count}"
 
-            # Check out the base patch
-            repo.git.checkout(base_patch)
+            # Check out the base patch - this doesn't move since we want to
+            # create the different PRs in parallel after applying formatter
+            repo.git.checkout(next_pr_base_patch)
 
             skipfile["skiplist"] = new_skiplist
 
@@ -392,7 +393,7 @@ def run(raw_args=None):
                 + f"{squad_build_urls}"
             )
             # set base patch for PR
-            base = base_patch
+            pr_base_patch = next_pr_base_patch
 
             if len(summary) > 50:
                 # Truncate the commit summary to < 50 characters for git commit
@@ -414,7 +415,7 @@ def run(raw_args=None):
                     github_repo,
                     summary,
                     message,
-                    base,
+                    pr_base_patch,
                     head,
                 )
 
@@ -423,7 +424,7 @@ def run(raw_args=None):
             new_skipitem = None
             # Log commit to file
             with open(f"{head}.diff", "w") as file:
-                diff = popen(f"git diff {base} {head}").read()
+                diff = popen(f"git diff {pr_base_patch} {head}").read()
                 file.write(f"{summary}\n{message}\n{diff}")
 
     return 0
