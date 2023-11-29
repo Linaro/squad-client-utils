@@ -233,6 +233,26 @@ options:
                         The number of builds to fetch when searching for a reproducer.
 ```
 
+### `squad-create-reproducer-from-testrun`: Get a reproducer for a given TestRun ID.
+
+This script fetches the build or test reproducer for a given TestRun ID.
+
+```
+usage: squad-create-reproducer-from-testrun [-h] --testrun TESTRUN [--debug]
+                                            [--filename FILENAME] [--local | --plan]
+
+Provide a SQUAD TestRun ID to download the build or test reproducer for that TestRun. The
+reproducer will be printed to the terminal and written to a file.
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --testrun TESTRUN    The TestRun ID of the build or test to fetch the reproducer for.
+  --debug              Display debug messages.
+  --filename FILENAME  Name for the reproducer file, 'reproducer' by default.
+  --local              Fetch a TuxRun or TuxMake reproducer rather than a TuxSuite reproducer.
+  --plan               Fetch a TuxPlan reproducer rather than a TuxTest of TuxBuild reproducer.
+```
+
 ### `squad-create-skipfile-reproducers`: Creating skipfile reproducers
 
 The `squad-create-skipfile-reproducers` script can be used to create TuxRun or

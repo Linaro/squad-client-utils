@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# vim: set ts=4
+#
+# Copyright 2023-present Linaro Limited
+#
+# SPDX-License-Identifier: MIT
+
+
+from argparse import ArgumentParser
+from logging import INFO, basicConfig, getLogger
+from os import chmod, getenv
+from stat import S_IRUSR, S_IWUSR, S_IXUSR
+from sys import exit
+
+from squad_client.core.api import SquadApi
+
+from squadutilslib import (
+    ReproducerNotFound,
+    get_reproducer_from_testrun,
+)
+
+squad_host_url = "https://qa-reports.linaro.org/"
+SquadApi.configure(cache=3600, url=getenv("SQUAD_HOST", squad_host_url))
+
+basicConfig(level=INFO)
+logger = getLogger(__name__)
+
+
+def parse_args(raw_args):
+    parser = ArgumentParser(
+        description="Provide a SQUAD TestRun ID to download the build or test reproducer for that TestRun."
+        + " The reproducer will be printed to the terminal and written to a file."
+    )
+
+    parser.add_argument(
+        "--testrun",
+        required=True,
+        help="The TestRun ID of the build or test to fetch the reproducer for.",
+    )
+
+    # Optional arguments:
+    parser.add_argument(
+        "--debug",
+        required=False,
+        action="store_true",
+        default=False,
+        help="Display debug messages.",
+    )
+
+    parser.add_argument(
+        "--filename",
+        required=False,
+        default="reproducer",
+        help="Name for the reproducer file, 'reproducer' by default.",
+    )
+
+    group = parser.add_mutually_exclusive_group()
+
+    group.add_argument(
+        "--local",
+        required=False,
+        action="store_true",
+        default=False,
+        help="Fetch a TuxRun or TuxMake reproducer rather than a TuxSuite reproducer.",
+    )
+
+    group.add_argument(
+        "--plan",
+        required=False,
+        action="store_true",
+        default=False,
+        help="Fetch a TuxPlan reproducer rather than a TuxTest of TuxBuild reproducer.",
+    )
+
+    return parser.parse_args(raw_args)
+
+
+def run(raw_args=None):
+    args = parse_args(raw_args)
+
+    try:
+        reproducer, is_test_reproducer = get_reproducer_from_testrun(
+            args.testrun, args.filename, args.plan, args.local
+        )
+
+    except ReproducerNotFound as e:
+        logger.error(f"No reproducer could be found for TestRun {args.testrun}")
+        logger.error(f"{e}")
+        return -1
+
+    print(reproducer)
+
+    # Make the script executable
+    chmod(args.filename, S_IXUSR | S_IRUSR | S_IWUSR)
+    logger.info(f"file created: {args.filename}")
+
+
+if __name__ == "__main__":
+    exit(run())
