@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+
+import argparse
+import logging
+import os
+import sys
+from pathlib import Path
+
+from squad_client.core.api import SquadApi
+from squad_client.core.models import Squad, TestRun
+from squad_client.utils import getid
+
+from squadutilslib import get_file
+
+squad_host_url = "https://qa-reports.linaro.org/"
+SquadApi.configure(cache=3600, url=os.getenv("SQUAD_HOST", squad_host_url))
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Script to scrape the log parameter from tests in specified projects."
+    )
+
+    parser.add_argument(
+        "--group",
+        required=True,
+        help="The name of the SQUAD group.",
+    )
+
+    parser.add_argument(
+        "--projects",
+        required=True,
+        action="extend",
+        nargs="+",
+        help="A list of SQUAD projects to fetch logs from.",
+    )
+
+    parser.add_argument(
+        "--suites",
+        required=True,
+        action="extend",
+        nargs="+",
+        help="A list of SQUAD test suite names to get logs for.",
+    )
+
+    parser.add_argument(
+        "--debug",
+        required=False,
+        action="store_true",
+        default=False,
+        help="Display debug messages.",
+    )
+
+    parser.add_argument(
+        "--full-log",
+        required=False,
+        action="store_true",
+        default=False,
+        help="Download the full log in addition to the log lines.",
+    )
+
+    parser.add_argument(
+        "--build_count",
+        required=False,
+        default=2,
+        type=int,
+        help="The number of builds to fetch when fetching logs.",
+    )
+
+    parser.add_argument(
+        "--test-count",
+        required=False,
+        default=-1,
+        type=int,
+        help="The number of failing tests to fetch for each build. Default is -1 for `ALL`",
+    )
+
+    return parser.parse_args()
+
+
+def run():
+    args = parse_args()
+
+    if args.debug:
+        logger.setLevel(level=logging.DEBUG)
+
+    group_name = args.group
+    project_names = args.projects
+
+    group = Squad().group(group_name)
+
+    cwd = Path.cwd()
+
+    for project_name in project_names:
+        project = group.project(project_name)
+        builds = project.builds(count=args.build_count)
+
+        for build_id, build in builds.items():
+            # There will only be a failure log when the test does not pass
+            filters = {"result": False}
+
+            # Look at all the tests in the build
+            tests = build.tests(count=args.test_count, **filters)
+            # If we are going to download the full log, pre-fetch the testruns
+            if args.full_log:
+                testrun_id_to_testrun = dict()
+                test_to_testrun_id = dict()
+                for test_id, test in tests.items():
+                    testrun_id = getid(test.test_run)
+                    test_to_testrun_id[test_id] = testrun_id
+                    if testrun_id not in testrun_id_to_testrun:
+                        testrun_id_to_testrun[testrun_id] = TestRun(testrun_id)
+                        logger.debug(
+                            f"Looking up TestRun {testrun_id} for {project_name} in {group_name}"
+                        )
+
+            for test_id, test in tests.items():
+                # only look at the suites we have requested - this is the first
+                # part of the name before the slash for example
+                # "ltp-syscalls/linkat02" has the suite "ltp-syscalls"
+                suite = test.name.split("/")[0]
+                if suite in args.suites:
+                    logger.debug(test.log)
+                    if test.log:
+                        log_filename = (
+                            cwd
+                            / Path("logs")
+                            / Path("tests")
+                            / Path(test.name)
+                            / Path(project.slug)
+                            / Path(str(test.id))
+                            / Path("log.log")
+                        )
+                        log_filename.parent.mkdir(exist_ok=True, parents=True)
+                        log_filename.write_text(test.log)
+                    if args.full_log:
+                        # If the full log has been requested download it. NOTE:
+                        # Just because the test was a failure does not
+                        # necessarily mean it will have test.log, so it can be
+                        # useful to gather the full logs to check what we may
+                        # have missed.
+                        testrun_id = test_to_testrun_id[test_id]
+                        testrun = testrun_id_to_testrun[testrun_id]
+                        full_log_filename = (
+                            cwd
+                            / Path("logs")
+                            / Path("testruns")
+                            / Path(project.slug)
+                            / Path(str(testrun.id))
+                            / Path("full_log.log")
+                        )
+
+                        # Only download the log if we don't already have it.
+                        if not full_log_filename.is_file():
+                            get_file(
+                                testrun.log_file,
+                                full_log_filename,
+                                headers={
+                                    "Authorization": f"token {os.getenv('SQUAD_TOKEN')}"
+                                },
+                            )
+                            logger.debug(f"Downloaded {testrun.log_file}")
+
+                        # Put symlinks for the log lines and the full logs next
+                        # to each other to make it easy to compare
+
+                        symlink_path = (
+                            cwd
+                            / Path("logs")
+                            / Path("testruns_next_to_tests")
+                            / Path(project.slug)
+                            / Path(str(testrun.id))
+                        )
+
+                        symlink_full_log = symlink_path / full_log_filename.name
+                        symlink_test_log = symlink_path / Path(
+                            f"{test.id}-{log_filename.name}"
+                        )
+
+                        if not symlink_test_log.exists():
+                            symlink_test_log.parent.mkdir(exist_ok=True, parents=True)
+                            logger.debug(f"created {symlink_test_log.parent}")
+
+                        if (
+                            full_log_filename.is_file()
+                            and not symlink_full_log.exists()
+                        ):
+                            symlink_full_log.symlink_to(full_log_filename)
+
+                        if log_filename.is_file() and not symlink_test_log.exists():
+                            symlink_test_log.symlink_to(log_filename)
+
+
+if __name__ == "__main__":
+    sys.exit(run())
