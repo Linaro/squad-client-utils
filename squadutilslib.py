@@ -33,7 +33,7 @@ class ReproducerNotFound(Exception):
         super().__init__(message)
 
 
-def get_file(path, filename=None):
+def get_file(path, filename=None, headers=None):
     """
     Download file if a URL is passed in, then return the filename of the
     downloaded file. If an existing file path is passed in, return the path. If
@@ -41,7 +41,7 @@ def get_file(path, filename=None):
     """
     logger.debug(f"Getting file from {path}")
     if search(r"https?://", path):
-        request = get(path, allow_redirects=True)
+        request = get(path, allow_redirects=True, headers=headers)
         request.raise_for_status()
         if not filename:
             filename = path.split("/")[-1]
